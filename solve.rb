@@ -22,6 +22,7 @@ class WordleSolver
   def solve
     close_modal
     guess('store')
+    sleep(3)
     5.times do 
       get_feedback
       break if game_won?
