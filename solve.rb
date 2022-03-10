@@ -53,21 +53,31 @@ class WordleSolver
   end
 
   def valid_guess?(word)
+    includes_correctly_positioned_letters?(word) &&
+    includes_present_letters_in_positions_not_tried?(word) &&
+    does_not_include_absent_letters?(word)
+  end
+
+  def includes_correctly_positioned_letters?(word)
     @word.each_with_index do |letter, index|
       if letter != ''
         return false if word[index] != letter
       end
     end
+  end
 
-    @absent.each do |letter|
-      return false if word.include?(letter)
-    end
-
+  def includes_present_letters_in_positions_not_tried?(word)
     @present.each do |letter, incorrect_positions|
       return false if !word.include?(letter)
       incorrect_positions.each do |position|
         return false if word[position] == letter
       end
+    end
+  end
+
+  def does_not_include_absent_letters?(word)
+    @absent.each do |letter|
+      return false if word.include?(letter)
     end
   end
 
@@ -86,7 +96,9 @@ class WordleSolver
   def add_feedback(letter, evaluation, position)
     case evaluation
     when 'absent'
-      @absent.push(letter)
+      if !@word.include?(letter) && !@present.keys.include?(letter)
+        @absent.push(letter)
+      end
     when 'present'
       if @present[letter]
         @present[letter].push(position)
