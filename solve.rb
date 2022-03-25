@@ -21,14 +21,13 @@ class WordleSolver
 
   def solve
     close_modal
-    guess('store')
-    sleep(3)
-    5.times do 
-      get_feedback
-      break if game_won?
-      next_guess = formulate_guess
+    next_guess = 'store'
+    6.times do 
       guess(next_guess)
       sleep(3)
+      get_feedback(next_guess)
+      break if game_won?
+      next_guess = formulate_guess
     end
   end
 
@@ -67,10 +66,19 @@ class WordleSolver
   end
 
   def includes_present_letters_in_positions_not_tried?(word)
-    @present.each do |letter, incorrect_positions|
+    @present.each do |letter, subhash|
       return false if !word.include?(letter)
-      incorrect_positions.each do |position|
+      subhash[:positions_tried].each do |position|
         return false if word[position] == letter
+      end
+    end
+  end
+
+  def includes_correct_letter_count(word)
+    @present.each do |letter, subhash|
+      if (subhash[:min_count] && word.count(letter) < subhash[:min_count]) ||
+         (subhash[:max_count] && word.count(letter) > subhash[:max_count])
+        return false
       end
     end
   end
@@ -81,33 +89,62 @@ class WordleSolver
     end
   end
 
-  def get_feedback
+  def get_feedback(word)
     row = @game_div.find_element(css: "game-row:nth-of-type(#{@current_row})").shadow_root
+    feedback_hash = create_feedback_hash(word)
+
     1.upto(5) do |n|
       tile = row.find_element(css: "game-tile:nth-of-type(#{n})")
       letter = tile.attribute("letter")
       evaluation = tile.attribute("evaluation")
-      add_feedback(letter, evaluation, n - 1)
+      position = n - 1
+      feedback_hash[letter][evaluation].push(position)
     end
     
+    add_feedback(feedback_hash)
     @current_row += 1
   end
 
-  def add_feedback(letter, evaluation, position)
-    case evaluation
-    when 'absent'
-      if !@word.include?(letter) && !@present.keys.include?(letter)
-        @absent.push(letter)
+  def create_feedback_hash(word)
+    feedback_hash = {}
+
+    word.each_char do |char|
+      if !feedback_hash[char]
+        feedback_hash[char] = {
+          'absent' => [],
+          'present' => [],
+          'correct' => []
+        }
       end
-    when 'present'
-      if @present[letter]
-        @present[letter].push(position)
+    end
+    feedback_hash
+  end
+
+  def add_feedback(feedback_hash)
+    feedback_hash.each do |char, feedback|
+      if !@present[char] && (feedback['present'].length > 0 || feedback['correct'].length > 0)
+        @present[char] = { positions_tried: [] }
+      end
+      
+      feedback['correct'].each do |position|
+        @word[position] = char
+      end
+
+      feedback['present'].each do |position|
+        @present[char][:positions_tried].push(position)
+      end
+
+      if feedback['absent'].length == 0
+        min_count = feedback['present'].length + feedback['correct'].length
+        @present[char][:min_count] = min_count 
       else
-        @present[letter] = [position]
+        if (feedback['present'].length > 0) || (feedback['correct'].length > 0)
+          max_count = feedback['present'].length + feedback['correct'].length
+          @present[char][:max_count] = max_count
+        else
+          @absent.push(char)
+        end
       end
-    when 'correct'
-      @present.delete(letter)
-      @word[position] = letter if @word[position] == ''
     end
   end
 end
