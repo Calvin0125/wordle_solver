@@ -54,6 +54,7 @@ class WordleSolver
   def valid_guess?(word)
     includes_correctly_positioned_letters?(word) &&
     includes_present_letters_in_positions_not_tried?(word) &&
+    includes_correct_letter_count?(word) &&
     does_not_include_absent_letters?(word)
   end
 
@@ -74,7 +75,7 @@ class WordleSolver
     end
   end
 
-  def includes_correct_letter_count(word)
+  def includes_correct_letter_count?(word)
     @present.each do |letter, subhash|
       if (subhash[:min_count] && word.count(letter) < subhash[:min_count]) ||
          (subhash[:max_count] && word.count(letter) > subhash[:max_count])
